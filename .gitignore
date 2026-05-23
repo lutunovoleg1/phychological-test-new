@@ -202,6 +202,8 @@ cython_debug/
 # .vscode/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
+nct_results.db
+nct_results.db-journal
 
 # Ruff stuff:
 .ruff_cache/
