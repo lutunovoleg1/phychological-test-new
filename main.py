@@ -269,7 +269,7 @@ class ElectronicNctApp:
         }
 
     def on_canvas_click(self, event) -> None:
-        number = self._number_from_current_item()
+        number = self._number_from_click(event.x, event.y)
         if number is None:
             if not self.engine.finished:
                 self._register_miss()
@@ -290,12 +290,21 @@ class ElectronicNctApp:
 
         self._update_progress()
 
-    def _number_from_current_item(self) -> int | None:
+    def _number_from_click(self, x: int, y: int) -> int | None:
+        item_ids = self.canvas.find_overlapping(x, y, x, y)
+        for item_id in reversed(item_ids):
+            number = self._number_from_item(item_id)
+            if number is not None:
+                return number
+
         item_ids = self.canvas.find_withtag("current")
         if not item_ids:
             return None
 
-        for tag in self.canvas.gettags(item_ids[0]):
+        return self._number_from_item(item_ids[0])
+
+    def _number_from_item(self, item_id: int) -> int | None:
+        for tag in self.canvas.gettags(item_id):
             if tag.startswith("num_"):
                 return int(tag.split("_", 1)[1])
 
