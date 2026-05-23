@@ -19,6 +19,19 @@ APP_DIR = Path(__file__).resolve().parent
 DB_PATH = APP_DIR / "nct_results.db"
 NUMBERS_COUNT = 25
 GRID_SIZE = 5
+CANVAS_BG = "#f3f6fb"
+ACTIVE_FILL = "#38bdf8"
+ACTIVE_OUTLINE = "#0284c7"
+ACTIVE_TEXT = "#082f49"
+ACTIVE_SHADOW = "#cbd5e1"
+ACTIVE_HIGHLIGHT = "#bae6fd"
+SELECTED_FILL = "#e5e7eb"
+SELECTED_OUTLINE = "#cbd5e1"
+SELECTED_TEXT = "#94a3b8"
+SELECTED_SHADOW = "#edf2f7"
+SELECTED_HIGHLIGHT = "#f8fafc"
+ERROR_FILL = "#fb7185"
+ERROR_OUTLINE = "#be123c"
 
 
 @dataclass(frozen=True)
@@ -152,7 +165,7 @@ class ElectronicNctApp:
         self.engine = NctEngine()
         self.generator = LayoutGenerator()
         self.circles: list[Circle] = []
-        self.number_to_oval: dict[int, int] = {}
+        self.number_to_items: dict[int, dict[str, int]] = {}
 
         self.patient_name = tk.StringVar(value="Пациент")
         self.age = tk.StringVar(value="45")
@@ -172,7 +185,7 @@ class ElectronicNctApp:
 
         tk.Button(top_bar, text="Новый тест", command=self.new_test).pack(side=tk.RIGHT, padx=(8, 0))
 
-        self.canvas = tk.Canvas(self.root, bg="#f7f8fb", highlightthickness=0)
+        self.canvas = tk.Canvas(self.root, bg=CANVAS_BG, highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 8))
         self.canvas.bind("<Button-1>", self.on_canvas_click)
 
@@ -196,7 +209,7 @@ class ElectronicNctApp:
         width = max(self.canvas.winfo_width(), 700)
         height = max(self.canvas.winfo_height(), 500)
         self.circles = self.generator.generate(width, height)
-        self.number_to_oval.clear()
+        self.number_to_items.clear()
 
         for circle in self.circles:
             self._draw_circle(circle)
@@ -209,25 +222,51 @@ class ElectronicNctApp:
         y0 = circle.y - circle.radius
         x1 = circle.x + circle.radius
         y1 = circle.y + circle.radius
+
+        shadow_offset = max(2, int(circle.radius * 0.08))
+        shadow_id = self.canvas.create_oval(
+            x0 + shadow_offset,
+            y0 + shadow_offset,
+            x1 + shadow_offset,
+            y1 + shadow_offset,
+            fill=ACTIVE_SHADOW,
+            outline="",
+            tags=(tag, "circle_shadow"),
+        )
         oval_id = self.canvas.create_oval(
             x0,
             y0,
             x1,
             y1,
-            fill="#ffffff",
-            outline="#1f2937",
-            width=2,
+            fill=ACTIVE_FILL,
+            outline=ACTIVE_OUTLINE,
+            width=1,
             tags=(tag, "circle"),
         )
-        self.canvas.create_text(
+        highlight_radius = circle.radius * 0.52
+        highlight_id = self.canvas.create_oval(
+            circle.x - highlight_radius,
+            circle.y - highlight_radius,
+            circle.x + highlight_radius,
+            circle.y + highlight_radius,
+            fill=ACTIVE_HIGHLIGHT,
+            outline="",
+            tags=(tag, "circle_highlight"),
+        )
+        text_id = self.canvas.create_text(
             circle.x,
             circle.y,
             text=str(circle.number),
-            fill="#111827",
-            font=("Arial", max(12, int(circle.radius * 0.8)), "bold"),
+            fill=ACTIVE_TEXT,
+            font=("Segoe UI", max(14, int(circle.radius * 0.78)), "bold"),
             tags=(tag, "number_text"),
         )
-        self.number_to_oval[circle.number] = oval_id
+        self.number_to_items[circle.number] = {
+            "shadow": shadow_id,
+            "oval": oval_id,
+            "highlight": highlight_id,
+            "text": text_id,
+        }
 
     def on_canvas_click(self, event) -> None:
         number = self._number_from_current_item()
@@ -243,7 +282,7 @@ class ElectronicNctApp:
             self._update_progress()
             return
 
-        self.canvas.itemconfig(self.number_to_oval[number], fill="#d1fae5", outline="#059669")
+        self._fade_number(number)
 
         if total_time is not None:
             self._finish_test(total_time)
@@ -270,14 +309,22 @@ class ElectronicNctApp:
         )
 
     def _flash_number(self, number: int) -> None:
-        oval_id = self.number_to_oval.get(number)
-        if oval_id is None:
+        items = self.number_to_items.get(number)
+        if items is None:
             return
 
+        oval_id = items["oval"]
         original_fill = self.canvas.itemcget(oval_id, "fill")
         original_outline = self.canvas.itemcget(oval_id, "outline")
-        self.canvas.itemconfig(oval_id, fill="#fecaca", outline="#dc2626")
+        self.canvas.itemconfig(oval_id, fill=ERROR_FILL, outline=ERROR_OUTLINE)
         self.root.after(200, lambda: self.canvas.itemconfig(oval_id, fill=original_fill, outline=original_outline))
+
+    def _fade_number(self, number: int) -> None:
+        items = self.number_to_items[number]
+        self.canvas.itemconfig(items["shadow"], fill=SELECTED_SHADOW)
+        self.canvas.itemconfig(items["oval"], fill=SELECTED_FILL, outline=SELECTED_OUTLINE)
+        self.canvas.itemconfig(items["highlight"], fill=SELECTED_HIGHLIGHT)
+        self.canvas.itemconfig(items["text"], fill=SELECTED_TEXT)
 
     def _update_progress(self) -> None:
         self.status.set(
