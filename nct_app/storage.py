@@ -13,9 +13,28 @@ logger = logging.getLogger(__name__)
 class ResultsStorage:
     """Хранилище результатов тестов в SQLite."""
 
-    def __init__(self, db_path: Path) -> None:
-        self.db_path = db_path
-        self._initialize()
+    def __init__(self, db_filename: str = "results.db"):
+        """
+        Инициализация хранилища.
+        
+        Путь к БД определяется относительно исполняемого файла (для релиза)
+        или корня проекта (для разработки).
+        """
+        import sys
+        from pathlib import Path
+
+        # Определяем базовую директорию
+        if getattr(sys, 'frozen', False):
+            # Запуск из скомпилированного exe (PyInstaller)
+            base_dir = Path(sys.executable).parent
+        else:
+            # Запуск из исходного кода
+            base_dir = Path(__file__).resolve().parent.parent
+
+        self.db_path = base_dir / db_filename
+        
+        # Остальной код инициализации (создание соединения) остается без изменений
+        self._connect()
 
     def _initialize(self) -> None:
         """Инициализация схемы БД."""
