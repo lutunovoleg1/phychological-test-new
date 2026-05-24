@@ -23,7 +23,11 @@ class TestResultsStorage:
         
         # Очистка после теста
         if db_path.exists():
-            db_path.unlink()
+            try:
+                db_path.unlink()
+            except PermissionError:
+                # На Windows файл может быть заблокирован, игнорируем
+                pass
 
     @pytest.fixture
     def storage(self, temp_db):
