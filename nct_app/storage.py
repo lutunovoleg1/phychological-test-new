@@ -56,7 +56,7 @@ class ResultsStorage:
                     result.patient.education_years,
                     round(result.total_time_seconds, 2),
                     result.errors_count,
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    (result.test_date or datetime.now()).strftime("%Y-%m-%d %H:%M:%S"),
                 ),
             )
         logger.info(
