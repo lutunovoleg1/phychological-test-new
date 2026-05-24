@@ -58,6 +58,10 @@ class ResultsStorage:
     def save_result(self, result: TestResult) -> None:
         """Сохранение результата тестирования в базу данных."""
         cursor = self.conn.cursor()
+        
+        # Безопасное получение даты: используем дату из результата или текущую
+        test_date = result.test_date if hasattr(result, 'test_date') and result.test_date else datetime.now()
+        
         cursor.execute(
             """
             INSERT INTO results (
@@ -69,9 +73,9 @@ class ResultsStorage:
                 result.patient.name,
                 result.patient.age,
                 result.patient.education_years,
-                result.total_time_seconds,
+                round(result.total_time_seconds, 2),  # Округляем для чистоты данных
                 result.errors_count,
-                result.test_date.isoformat(),
+                test_date.isoformat(),
             ),
         )
         self.conn.commit()
